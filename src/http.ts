@@ -1,5 +1,6 @@
-import type { ResolvedConfig } from './config';
+import type { FetchResponse, ResolvedConfig } from './config';
 import { PaylinkApiError, PaylinkConnectionError } from './errors';
+import { VERSION } from './version';
 
 /**
  * Options for a single API request.
@@ -9,6 +10,8 @@ import { PaylinkApiError, PaylinkConnectionError } from './errors';
  * - `query` — query parameters (used for the recurring status GET).
  * - `idempotencyKey` — sent as the `Idempotency-Key` header when provided.
  * - `signal` — optional caller abort signal, combined with the timeout.
+ * - `replaySafe` — overrides the default replay-safety rule; set `true` for
+ *   POSTs that are pure reads (check-status) so they can be retried.
  */
 export interface RequestOptions {
   method: 'GET' | 'POST';
@@ -17,12 +20,27 @@ export interface RequestOptions {
   query?: Record<string, string>;
   idempotencyKey?: string;
   signal?: AbortSignal;
+  replaySafe?: boolean;
 }
+
+const RETRY_MAX_DELAY_MS = 8_000;
+
+const RUNTIME_SUFFIX =
+  typeof process !== 'undefined' && process.versions?.node ? ` node/${process.versions.node}` : '';
+
+/** Sent on every request so server-side logs can attribute traffic to a version. */
+export const USER_AGENT = `paylink-js/${VERSION}${RUNTIME_SUFFIX}`;
 
 /**
  * Execute a request against the integration API and return the `data` payload
  * of the success envelope. Throws {@link PaylinkApiError} for non-success
  * responses and {@link PaylinkConnectionError} for network/timeout failures.
+ *
+ * Retries transient failures (429, 5xx, network errors, timeouts) with
+ * exponential backoff and full jitter, honoring `Retry-After` when the server
+ * sends it. A request is only ever replayed when doing so cannot double-charge:
+ * GETs, requests carrying an `Idempotency-Key`, and calls explicitly flagged
+ * `replaySafe`. A bare `vcc.charge` or `cards.charge` is NEVER retried.
  */
 export async function execute<T>(config: ResolvedConfig, options: RequestOptions): Promise<T> {
   // An already-aborted signal never fires an `abort` event, so the listener
@@ -34,9 +52,97 @@ export async function execute<T>(config: ResolvedConfig, options: RequestOptions
     });
   }
 
+  const maxAttempts = isReplaySafe(options) ? config.maxRetries + 1 : 1;
+
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await attemptRequest<T>(config, options);
+    } catch (error) {
+      if (attempt >= maxAttempts || !isTransient(error, options.signal)) {
+        throw error;
+      }
+
+      await sleep(backoffMs(config, error, attempt), options.signal, options.path);
+    }
+  }
+}
+
+/**
+ * Whether replaying this request is safe. Reads are always safe; writes are
+ * only safe when the server can dedupe them via an idempotency key.
+ */
+function isReplaySafe(options: RequestOptions): boolean {
+  return options.replaySafe ?? (options.method === 'GET' || options.idempotencyKey !== undefined);
+}
+
+/** Whether the failure is worth another attempt. */
+function isTransient(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) {
+    return false;
+  }
+
+  if (error instanceof PaylinkConnectionError) {
+    return true;
+  }
+
+  if (error instanceof PaylinkApiError) {
+    return error.status === 429 || error.status >= 500;
+  }
+
+  return false;
+}
+
+/**
+ * Exponential backoff with full jitter, bounded by {@link RETRY_MAX_DELAY_MS}.
+ * A server-sent `Retry-After` wins over the computed delay.
+ */
+function backoffMs(config: ResolvedConfig, error: unknown, attempt: number): number {
+  if (error instanceof PaylinkApiError && error.retryAfterMs !== undefined) {
+    return Math.min(error.retryAfterMs, RETRY_MAX_DELAY_MS);
+  }
+
+  const ceiling = Math.min(config.retryBaseDelayMs * 2 ** (attempt - 1), RETRY_MAX_DELAY_MS);
+
+  return Math.random() * ceiling;
+}
+
+function sleep(ms: number, signal: AbortSignal | undefined, path: string): Promise<void> {
+  if (ms <= 0) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    function cleanup(): void {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+    }
+
+    function onAbort(): void {
+      cleanup();
+      reject(
+        new PaylinkConnectionError(`Request to ${path} was aborted while waiting to retry.`, {
+          cause: signal?.reason,
+        }),
+      );
+    }
+
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+/** One attempt: send, then map the response onto the success envelope or an error. */
+async function attemptRequest<T>(config: ResolvedConfig, options: RequestOptions): Promise<T> {
   const url = buildUrl(config.baseUrl, options.path, options.query);
 
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'User-Agent': USER_AGENT,
+  };
   let body: string | undefined;
 
   if (options.method !== 'GET') {
@@ -53,7 +159,7 @@ export async function execute<T>(config: ResolvedConfig, options: RequestOptions
   options.signal?.addEventListener('abort', onAbort, { once: true });
   const timer = setTimeout(() => controller.abort(), config.timeoutMs);
 
-  let response;
+  let response: FetchResponse;
 
   try {
     response = await config.fetch(url, { method: options.method, headers, body, signal: controller.signal });
@@ -75,7 +181,12 @@ export async function execute<T>(config: ResolvedConfig, options: RequestOptions
   const parsed = safeJsonParse(rawText);
 
   if (!response.ok || isFailureEnvelope(parsed)) {
-    throw toApiError(response.status, parsed, rawText);
+    throw toApiError(
+      response.status,
+      parsed,
+      rawText,
+      parseRetryAfter(response.headers.get('Retry-After')),
+    );
   }
 
   if (parsed !== null && typeof parsed === 'object' && 'data' in (parsed as Record<string, unknown>)) {
@@ -83,6 +194,27 @@ export async function execute<T>(config: ResolvedConfig, options: RequestOptions
   }
 
   return parsed as T;
+}
+
+/** `Retry-After` is either delta-seconds or an HTTP date. Returns milliseconds. */
+function parseRetryAfter(value: string | null): number | undefined {
+  if (value === null || value.trim() === '') {
+    return undefined;
+  }
+
+  const seconds = Number(value);
+
+  if (Number.isFinite(seconds)) {
+    return Math.max(0, seconds * 1000);
+  }
+
+  const timestamp = Date.parse(value);
+
+  if (Number.isFinite(timestamp)) {
+    return Math.max(0, timestamp - Date.now());
+  }
+
+  return undefined;
 }
 
 function buildUrl(baseUrl: string, path: string, query?: Record<string, string>): string {
@@ -118,7 +250,12 @@ function isFailureEnvelope(parsed: unknown): boolean {
   );
 }
 
-function toApiError(status: number, parsed: unknown, rawText: string): PaylinkApiError {
+function toApiError(
+  status: number,
+  parsed: unknown,
+  rawText: string,
+  retryAfterMs?: number,
+): PaylinkApiError {
   const envelope = parsed !== null && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
   const nestedData = envelope.data !== null && typeof envelope.data === 'object' ? (envelope.data as Record<string, unknown>) : {};
   const message =
@@ -129,7 +266,7 @@ function toApiError(status: number, parsed: unknown, rawText: string): PaylinkAp
       ? (envelope.errors as Record<string, unknown>)
       : undefined;
 
-  return new PaylinkApiError(message, { status, errors, raw: parsed ?? rawText });
+  return new PaylinkApiError(message, { status, errors, raw: parsed ?? rawText, retryAfterMs });
 }
 
 function firstString(...values: unknown[]): string | undefined {

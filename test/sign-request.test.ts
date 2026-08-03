@@ -16,7 +16,17 @@ import type { EndpointSpec } from '../src/internal/fieldOrders';
 import { buildSignedBody } from '../src/internal/sign-request';
 import golden from './fixtures/golden-signatures.json';
 
-const SPECS: Record<string, EndpointSpec> = {
+/**
+ * The golden suite drives specs dynamically from a JSON fixture, so it needs a
+ * type-erased view of EndpointSpec. `any` is deliberate: `EndpointSpec<P>` is
+ * contravariant in P (via `keyof P`), so no concrete params type is assignable
+ * to a widened `Record<string, unknown>` form. Erasure is confined to this
+ * harness — production call sites are fully checked.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySpec = EndpointSpec<any>;
+
+const SPECS: Record<string, AnySpec> = {
   INVOICE_CREATE,
   PAYMENT_VOID,
   PAYMENT_REFUND,
@@ -39,7 +49,12 @@ describe('buildSignedBody — golden parity with the server', () => {
     }
 
     it(`signs "${testCase.name}" identically to PHP`, () => {
-      const body = buildSignedBody(spec, testCase.input, 'pub_token', golden.hashToken);
+      const body = buildSignedBody(
+        spec,
+        testCase.input as Record<string, unknown>,
+        'pub_token',
+        golden.hashToken,
+      );
 
       expect(body.signature).toBe(testCase.expected);
       expect(body.token).toBe('pub_token');
@@ -48,7 +63,7 @@ describe('buildSignedBody — golden parity with the server', () => {
 });
 
 describe('buildSignedBody — body construction rules', () => {
-  const create = (spec: EndpointSpec, input: Record<string, unknown>) =>
+  const create = (spec: AnySpec, input: Record<string, unknown>) =>
     buildSignedBody(spec, input, 'pub_token', golden.hashToken);
 
   it('maps camelCase to snake_case wire keys', () => {

@@ -25,7 +25,11 @@ export type FetchLike = (
  * - `publicToken` — identifies the integration; sent as `token` on every request.
  * - `hashToken` — secret signing key; server-side only, never expose to a browser.
  * - `baseUrl` — API base URL; defaults to `https://pay.getpayin.com`.
- * - `timeoutMs` — per-request timeout in milliseconds; defaults to 30000.
+ * - `timeoutMs` — timeout in milliseconds applied to each individual attempt;
+ *   defaults to 30000. With retries enabled, total wall time can exceed this.
+ * - `maxRetries` — how many times to RETRY a failed request (so `2` means up to
+ *   3 attempts); defaults to 2. Set `0` to disable retries entirely. Only
+ *   replay-safe requests are retried — see {@link execute}.
  * - `fetch` — custom `fetch` implementation; defaults to the global `fetch`
  *   (Node 18+). Useful for injecting a mock in tests or a proxy-aware client.
  */
@@ -34,6 +38,7 @@ export interface PaylinkClientConfig {
   hashToken: string;
   baseUrl?: string;
   timeoutMs?: number;
+  maxRetries?: number;
   fetch?: FetchLike;
 }
 
@@ -42,11 +47,16 @@ export interface ResolvedConfig {
   hashToken: string;
   baseUrl: string;
   timeoutMs: number;
+  maxRetries: number;
+  /** Base delay for exponential backoff. Internal; overridden in tests. */
+  retryBaseDelayMs: number;
   fetch: FetchLike;
 }
 
 const DEFAULT_BASE_URL = 'https://pay.getpayin.com';
 const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_MAX_RETRIES = 2;
+const DEFAULT_RETRY_BASE_DELAY_MS = 250;
 
 export function resolveConfig(config: PaylinkClientConfig): ResolvedConfig {
   const publicToken = requireNonEmpty(config.publicToken, 'publicToken');
@@ -58,6 +68,12 @@ export function resolveConfig(config: PaylinkClientConfig): ResolvedConfig {
     throw new PaylinkConfigError('timeoutMs must be a positive number.');
   }
 
+  const maxRetries = config.maxRetries ?? DEFAULT_MAX_RETRIES;
+
+  if (!Number.isInteger(maxRetries) || maxRetries < 0) {
+    throw new PaylinkConfigError('maxRetries must be a non-negative integer.');
+  }
+
   const baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
   const fetchImpl = config.fetch ?? (globalThis.fetch as FetchLike | undefined);
 
@@ -67,7 +83,14 @@ export function resolveConfig(config: PaylinkClientConfig): ResolvedConfig {
     );
   }
 
-  const resolved = { publicToken, baseUrl, timeoutMs, fetch: fetchImpl } as ResolvedConfig;
+  const resolved = {
+    publicToken,
+    baseUrl,
+    timeoutMs,
+    maxRetries,
+    retryBaseDelayMs: DEFAULT_RETRY_BASE_DELAY_MS,
+    fetch: fetchImpl,
+  } as ResolvedConfig;
 
   return withHiddenSecret(resolved, hashToken);
 }

@@ -1,11 +1,13 @@
 import type { ResolvedConfig } from '../config';
 import { execute } from '../http';
 import { CARD_CHARGE, CARD_REVOKE, CARD_TOKENIZE } from '../internal/fieldOrders';
+import type { EndpointSpec } from '../internal/fieldOrders';
 import { buildSignedBody } from '../internal/sign-request';
 import type {
   ChargeTokenParams,
   ChargeTokenResult,
   RequestOverrides,
+  RevokeTokenParams,
   RevokeTokenResult,
   TokenizeCardParams,
   TokenizeCardResult,
@@ -35,7 +37,7 @@ export class Cards {
 
   /** Vault a card and return a reusable token (`POST /api/v2/integration/tokens/card`). */
   async tokenize(params: TokenizeCardParams, overrides?: RequestOverrides): Promise<TokenizeCardResult> {
-    const data = await this.send<RawTokenize>(CARD_TOKENIZE, params, overrides);
+    const data = await this.send<RawTokenize, TokenizeCardParams>(CARD_TOKENIZE, params, overrides);
 
     return {
       token: data.token,
@@ -51,7 +53,7 @@ export class Cards {
 
   /** Charge a previously vaulted card (`POST /api/v2/integration/tokens/charge`). */
   async charge(params: ChargeTokenParams, overrides?: RequestOverrides): Promise<ChargeTokenResult> {
-    const data = await this.send<RawTokenCharge>(CARD_CHARGE, params, overrides);
+    const data = await this.send<RawTokenCharge, ChargeTokenParams>(CARD_CHARGE, params, overrides);
 
     return {
       invoiceId: data.invoice_id,
@@ -64,23 +66,18 @@ export class Cards {
   }
 
   /** Revoke a vaulted card token (`POST /api/v2/integration/tokens/revoke`). Idempotent. */
-  async revoke(params: { cardToken: string }, overrides?: RequestOverrides): Promise<RevokeTokenResult> {
-    const data = await this.send<RawRevoke>(CARD_REVOKE, params, overrides);
+  async revoke(params: RevokeTokenParams, overrides?: RequestOverrides): Promise<RevokeTokenResult> {
+    const data = await this.send<RawRevoke, RevokeTokenParams>(CARD_REVOKE, params, overrides);
 
     return { message: data.message ?? 'Token revoked.' };
   }
 
-  private async send<T>(
-    spec: (typeof CARD_TOKENIZE) | (typeof CARD_CHARGE) | (typeof CARD_REVOKE),
-    params: object,
+  private async send<T, P extends object>(
+    spec: EndpointSpec<P>,
+    params: P,
     overrides?: RequestOverrides,
   ): Promise<T> {
-    const body = buildSignedBody(
-      spec,
-      params as Record<string, unknown>,
-      this.config.publicToken,
-      this.config.hashToken,
-    );
+    const body = buildSignedBody(spec, params, this.config.publicToken, this.config.hashToken);
 
     return execute<T>(this.config, {
       method: 'POST',

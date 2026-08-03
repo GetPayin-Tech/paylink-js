@@ -52,6 +52,10 @@ export function fakeConfig(overrides: Partial<ResolvedConfig> = {}): ResolvedCon
     hashToken: 'test_hash_token_abc123',
     baseUrl: 'https://pay.getpayin.com',
     timeoutMs: 30_000,
+    maxRetries: 2,
+    // Zero backoff keeps the suite fast; retry tests assert attempt counts,
+    // not timing.
+    retryBaseDelayMs: 0,
     fetch: fakeFetch(() => ({ json: { success: true, data: {} } })).fetch,
     ...overrides,
   };
