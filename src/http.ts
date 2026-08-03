@@ -25,6 +25,15 @@ export interface RequestOptions {
  * responses and {@link PaylinkConnectionError} for network/timeout failures.
  */
 export async function execute<T>(config: ResolvedConfig, options: RequestOptions): Promise<T> {
+  // An already-aborted signal never fires an `abort` event, so the listener
+  // below would never run and the request would be sent anyway — for a payments
+  // API that means charging after the caller has cancelled. Check up front.
+  if (options.signal?.aborted) {
+    throw new PaylinkConnectionError(`Request to ${options.path} was aborted before it was sent.`, {
+      cause: options.signal.reason,
+    });
+  }
+
   const url = buildUrl(config.baseUrl, options.path, options.query);
 
   const headers: Record<string, string> = { Accept: 'application/json' };

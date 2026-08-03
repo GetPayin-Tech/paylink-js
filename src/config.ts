@@ -67,7 +67,29 @@ export function resolveConfig(config: PaylinkClientConfig): ResolvedConfig {
     );
   }
 
-  return { publicToken, hashToken, baseUrl, timeoutMs, fetch: fetchImpl };
+  const resolved = { publicToken, baseUrl, timeoutMs, fetch: fetchImpl } as ResolvedConfig;
+
+  return withHiddenSecret(resolved, hashToken);
+}
+
+/**
+ * Attach the signing secret as a NON-ENUMERABLE property.
+ *
+ * `hashToken` stays readable as `config.hashToken` for signing, but it is
+ * skipped by `JSON.stringify`, by `util.inspect` (so `console.log`), and by
+ * object spread. Without this, every resource holds a reference to the config,
+ * so `JSON.stringify(client)` — or any error reporter that serializes request
+ * context — would dump the secret in plaintext once per namespace.
+ */
+function withHiddenSecret(resolved: ResolvedConfig, hashToken: string): ResolvedConfig {
+  Object.defineProperty(resolved, 'hashToken', {
+    value: hashToken,
+    enumerable: false,
+    writable: false,
+    configurable: false,
+  });
+
+  return resolved;
 }
 
 function requireNonEmpty(value: string | undefined, name: string): string {
