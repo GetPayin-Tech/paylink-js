@@ -31,6 +31,7 @@ export type {
   TokenizeCardResult,
   ChargeTokenParams,
   ChargeTokenResult,
+  RevokeTokenParams,
   RevokeTokenResult,
   CreateRecurringParams,
   CreateRecurringResult,

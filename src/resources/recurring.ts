@@ -40,7 +40,7 @@ export class Recurring {
   async create(params: CreateRecurringParams, overrides?: RequestOverrides): Promise<CreateRecurringResult> {
     const body = buildSignedBody(
       RECURRING_CREATE,
-      params as unknown as Record<string, unknown>,
+      params,
       this.config.publicToken,
       this.config.hashToken,
     );

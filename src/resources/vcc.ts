@@ -22,7 +22,7 @@ export class Vcc {
   async charge(params: VccChargeParams, overrides?: RequestOverrides): Promise<VccChargeResult> {
     const body = buildSignedBody(
       VCC_CHARGE,
-      params as unknown as Record<string, unknown>,
+      params,
       this.config.publicToken,
       this.config.hashToken,
     );
