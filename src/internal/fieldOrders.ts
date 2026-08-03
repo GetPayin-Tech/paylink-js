@@ -1,3 +1,14 @@
+import type {
+  AmountParams,
+  ChargeTokenParams,
+  CreateInvoiceParams,
+  CreateRecurringParams,
+  InvoiceRef,
+  RevokeTokenParams,
+  TokenizeCardParams,
+  VccChargeParams,
+} from '../types';
+
 /**
  * The signed-field registry. Each entry lists the request fields for one
  * endpoint in the EXACT order the server concatenates them when it rebuilds the
@@ -13,16 +24,21 @@
  *    from the signature.
  *  - `countryStateBlock` appends the per-country state fields after the listed
  *    fields: US -> us_state, postal_code; CA -> canada_state, postal_code.
+ *
+ * Each spec is parameterised by the SDK request type it belongs to, so `sdk`
+ * keys are checked against that interface: renaming a field on the params type
+ * without updating this registry is a compile error rather than a silently
+ * broken signature.
  */
 
 /**
- * One request field: `sdk` is the camelCase key on the SDK request object,
- * `wire` is the snake_case key sent over the wire, and `signed` (default true)
- * marks whether it contributes to the signature — `false` for fields such as
- * `payment_mode` that are sent but excluded from signing.
+ * One request field: `sdk` is the camelCase key on the SDK request object (and
+ * must exist on `P`), `wire` is the snake_case key sent over the wire, and
+ * `signed` (default true) marks whether it contributes to the signature —
+ * `false` for fields such as `payment_mode` that are sent but excluded.
  */
-export interface FieldSpec {
-  sdk: string;
+export interface FieldSpec<P> {
+  sdk: keyof P & string;
   wire: string;
   signed?: boolean;
 }
@@ -32,156 +48,152 @@ export interface FieldSpec {
  * `countryStateBlock`, which appends the per-country state fields
  * (us_state/canada_state + postal_code) after `fields`.
  */
-export interface EndpointSpec {
+export interface EndpointSpec<P> {
   method: 'POST';
   path: string;
-  fields: FieldSpec[];
+  fields: FieldSpec<P>[];
   countryStateBlock?: boolean;
 }
 
-const f = (sdk: string, wire: string): FieldSpec => ({ sdk, wire });
-const unsigned = (sdk: string, wire: string): FieldSpec => ({ sdk, wire, signed: false });
-
-export const INVOICE_CREATE: EndpointSpec = {
+export const INVOICE_CREATE: EndpointSpec<CreateInvoiceParams> = {
   method: 'POST',
   path: '/api/v2/integration/init',
   fields: [
-    f('firstName', 'first_name'),
-    f('lastName', 'last_name'),
-    f('email', 'email'),
-    f('orderTitle', 'order_title'),
-    f('orderAmount', 'order_amount'),
-    f('address', 'address'),
-    f('city', 'city'),
-    f('country', 'country'),
-    f('state', 'state'),
-    f('currency', 'currency'),
-    f('redirectionUrl', 'redirection_url'),
-    f('webhookUrl', 'webhook_url'),
-    f('orderDetails', 'order_details'),
-    unsigned('paymentMode', 'payment_mode'),
+    { sdk: 'firstName', wire: 'first_name' },
+    { sdk: 'lastName', wire: 'last_name' },
+    { sdk: 'email', wire: 'email' },
+    { sdk: 'orderTitle', wire: 'order_title' },
+    { sdk: 'orderAmount', wire: 'order_amount' },
+    { sdk: 'address', wire: 'address' },
+    { sdk: 'city', wire: 'city' },
+    { sdk: 'country', wire: 'country' },
+    { sdk: 'state', wire: 'state' },
+    { sdk: 'currency', wire: 'currency' },
+    { sdk: 'redirectionUrl', wire: 'redirection_url' },
+    { sdk: 'webhookUrl', wire: 'webhook_url' },
+    { sdk: 'orderDetails', wire: 'order_details' },
+    { sdk: 'paymentMode', wire: 'payment_mode', signed: false },
   ],
 };
 
-const PAYMENT_INVOICE_ONLY: FieldSpec[] = [f('invoiceId', 'invoice_id')];
-const PAYMENT_INVOICE_AMOUNT: FieldSpec[] = [f('invoiceId', 'invoice_id'), f('amount', 'amount')];
+const INVOICE_ID_FIELD: FieldSpec<InvoiceRef> = { sdk: 'invoiceId', wire: 'invoice_id' };
 
-export const PAYMENT_VOID: EndpointSpec = {
+export const PAYMENT_VOID: EndpointSpec<InvoiceRef> = {
   method: 'POST',
   path: '/api/integration/void',
-  fields: PAYMENT_INVOICE_ONLY,
+  fields: [INVOICE_ID_FIELD],
 };
 
-export const PAYMENT_REFUND: EndpointSpec = {
+export const PAYMENT_REFUND: EndpointSpec<AmountParams> = {
   method: 'POST',
   path: '/api/integration/refund',
-  fields: PAYMENT_INVOICE_AMOUNT,
+  fields: [INVOICE_ID_FIELD, { sdk: 'amount', wire: 'amount' }],
 };
 
-export const PAYMENT_SETTLE: EndpointSpec = {
+export const PAYMENT_SETTLE: EndpointSpec<AmountParams> = {
   method: 'POST',
   path: '/api/integration/settle',
-  fields: PAYMENT_INVOICE_AMOUNT,
+  fields: [INVOICE_ID_FIELD, { sdk: 'amount', wire: 'amount' }],
 };
 
-export const PAYMENT_REVERSE_AUTHORIZATION: EndpointSpec = {
+export const PAYMENT_REVERSE_AUTHORIZATION: EndpointSpec<InvoiceRef> = {
   method: 'POST',
   path: '/api/integration/reverse-authorization',
-  fields: PAYMENT_INVOICE_ONLY,
+  fields: [INVOICE_ID_FIELD],
 };
 
-export const PAYMENT_CHECK_STATUS: EndpointSpec = {
+export const PAYMENT_CHECK_STATUS: EndpointSpec<InvoiceRef> = {
   method: 'POST',
   path: '/api/integration/check-status',
-  fields: PAYMENT_INVOICE_ONLY,
+  fields: [INVOICE_ID_FIELD],
 };
 
-export const VCC_CHARGE: EndpointSpec = {
+export const VCC_CHARGE: EndpointSpec<VccChargeParams> = {
   method: 'POST',
   path: '/api/v2/integration/vcc/charge',
   countryStateBlock: true,
   fields: [
-    f('firstName', 'first_name'),
-    f('lastName', 'last_name'),
-    f('email', 'email'),
-    f('phone', 'phone'),
-    f('currencyId', 'currency_id'),
-    f('price', 'price'),
-    f('product', 'product'),
-    f('referenceNumber', 'reference_number'),
-    f('cardNumber', 'card_number'),
-    f('cardExpiryMonth', 'card_expiry_month'),
-    f('cardExpiryYear', 'card_expiry_year'),
-    f('cardCvv', 'card_cvv'),
-    f('country', 'country'),
-    f('address', 'address'),
-    f('city', 'city'),
+    { sdk: 'firstName', wire: 'first_name' },
+    { sdk: 'lastName', wire: 'last_name' },
+    { sdk: 'email', wire: 'email' },
+    { sdk: 'phone', wire: 'phone' },
+    { sdk: 'currencyId', wire: 'currency_id' },
+    { sdk: 'price', wire: 'price' },
+    { sdk: 'product', wire: 'product' },
+    { sdk: 'referenceNumber', wire: 'reference_number' },
+    { sdk: 'cardNumber', wire: 'card_number' },
+    { sdk: 'cardExpiryMonth', wire: 'card_expiry_month' },
+    { sdk: 'cardExpiryYear', wire: 'card_expiry_year' },
+    { sdk: 'cardCvv', wire: 'card_cvv' },
+    { sdk: 'country', wire: 'country' },
+    { sdk: 'address', wire: 'address' },
+    { sdk: 'city', wire: 'city' },
   ],
 };
 
-export const CARD_TOKENIZE: EndpointSpec = {
+export const CARD_TOKENIZE: EndpointSpec<TokenizeCardParams> = {
   method: 'POST',
   path: '/api/v2/integration/tokens/card',
   countryStateBlock: true,
   fields: [
-    f('firstName', 'first_name'),
-    f('lastName', 'last_name'),
-    f('email', 'email'),
-    f('customerReference', 'customer_reference'),
-    f('externalReference', 'external_reference'),
-    f('cardNumber', 'card_number'),
-    f('cardExpiryMonth', 'card_expiry_month'),
-    f('cardExpiryYear', 'card_expiry_year'),
-    f('cardCvv', 'card_cvv'),
-    f('country', 'country'),
-    f('address', 'address'),
-    f('city', 'city'),
+    { sdk: 'firstName', wire: 'first_name' },
+    { sdk: 'lastName', wire: 'last_name' },
+    { sdk: 'email', wire: 'email' },
+    { sdk: 'customerReference', wire: 'customer_reference' },
+    { sdk: 'externalReference', wire: 'external_reference' },
+    { sdk: 'cardNumber', wire: 'card_number' },
+    { sdk: 'cardExpiryMonth', wire: 'card_expiry_month' },
+    { sdk: 'cardExpiryYear', wire: 'card_expiry_year' },
+    { sdk: 'cardCvv', wire: 'card_cvv' },
+    { sdk: 'country', wire: 'country' },
+    { sdk: 'address', wire: 'address' },
+    { sdk: 'city', wire: 'city' },
   ],
 };
 
-export const CARD_CHARGE: EndpointSpec = {
+export const CARD_CHARGE: EndpointSpec<ChargeTokenParams> = {
   method: 'POST',
   path: '/api/v2/integration/tokens/charge',
   countryStateBlock: true,
   fields: [
-    f('cardToken', 'card_token'),
-    f('initiator', 'initiator'),
-    f('firstName', 'first_name'),
-    f('lastName', 'last_name'),
-    f('email', 'email'),
-    f('currency', 'currency'),
-    f('price', 'price'),
-    f('product', 'product'),
-    f('referenceNumber', 'reference_number'),
-    f('country', 'country'),
-    f('address', 'address'),
-    f('city', 'city'),
+    { sdk: 'cardToken', wire: 'card_token' },
+    { sdk: 'initiator', wire: 'initiator' },
+    { sdk: 'firstName', wire: 'first_name' },
+    { sdk: 'lastName', wire: 'last_name' },
+    { sdk: 'email', wire: 'email' },
+    { sdk: 'currency', wire: 'currency' },
+    { sdk: 'price', wire: 'price' },
+    { sdk: 'product', wire: 'product' },
+    { sdk: 'referenceNumber', wire: 'reference_number' },
+    { sdk: 'country', wire: 'country' },
+    { sdk: 'address', wire: 'address' },
+    { sdk: 'city', wire: 'city' },
   ],
 };
 
-export const CARD_REVOKE: EndpointSpec = {
+export const CARD_REVOKE: EndpointSpec<RevokeTokenParams> = {
   method: 'POST',
   path: '/api/v2/integration/tokens/revoke',
-  fields: [f('cardToken', 'card_token')],
+  fields: [{ sdk: 'cardToken', wire: 'card_token' }],
 };
 
-export const RECURRING_CREATE: EndpointSpec = {
+export const RECURRING_CREATE: EndpointSpec<CreateRecurringParams> = {
   method: 'POST',
   path: '/api/v2/integration/recurring/init',
   fields: [
-    f('firstName', 'first_name'),
-    f('lastName', 'last_name'),
-    f('email', 'email'),
-    f('orderTitle', 'order_title'),
-    f('orderAmount', 'order_amount'),
-    f('currency', 'currency'),
-    f('cadenceInterval', 'cadence_interval'),
-    f('cadenceCount', 'cadence_count'),
-    f('totalCycles', 'total_cycles'),
-    f('endDate', 'end_date'),
-    f('consentText', 'consent_text'),
-    f('externalReference', 'external_reference'),
-    f('redirectionUrl', 'redirection_url'),
-    f('webhookUrl', 'webhook_url'),
+    { sdk: 'firstName', wire: 'first_name' },
+    { sdk: 'lastName', wire: 'last_name' },
+    { sdk: 'email', wire: 'email' },
+    { sdk: 'orderTitle', wire: 'order_title' },
+    { sdk: 'orderAmount', wire: 'order_amount' },
+    { sdk: 'currency', wire: 'currency' },
+    { sdk: 'cadenceInterval', wire: 'cadence_interval' },
+    { sdk: 'cadenceCount', wire: 'cadence_count' },
+    { sdk: 'totalCycles', wire: 'total_cycles' },
+    { sdk: 'endDate', wire: 'end_date' },
+    { sdk: 'consentText', wire: 'consent_text' },
+    { sdk: 'externalReference', wire: 'external_reference' },
+    { sdk: 'redirectionUrl', wire: 'redirection_url' },
+    { sdk: 'webhookUrl', wire: 'webhook_url' },
   ],
 };

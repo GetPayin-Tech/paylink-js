@@ -20,7 +20,7 @@ export class Invoices {
   async create(params: CreateInvoiceParams, overrides?: RequestOverrides): Promise<CreateInvoiceResult> {
     const body = buildSignedBody(
       INVOICE_CREATE,
-      params as unknown as Record<string, unknown>,
+      params,
       this.config.publicToken,
       this.config.hashToken,
     );

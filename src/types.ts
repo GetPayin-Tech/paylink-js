@@ -144,6 +144,10 @@ export interface ChargeTokenResult {
   cardToken: string;
 }
 
+export interface RevokeTokenParams {
+  cardToken: string;
+}
+
 export interface RevokeTokenResult {
   message: string;
 }
