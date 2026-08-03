@@ -136,6 +136,33 @@ await paylink.recurring.resume(mandate.mandateId);
 await paylink.recurring.cancel(mandate.mandateId);
 ```
 
+## Idempotency
+
+Retrying a write after a network error or timeout risks performing it twice. To
+make that safe, pass an `idempotencyKey` in the per-call overrides — the SDK
+sends it as the `Idempotency-Key` header and the server returns the original
+result instead of charging, refunding, or creating a second time. Keys are
+scoped per integration and capped at 64 characters.
+
+| Endpoint | A replay with the same key returns |
+| --- | --- |
+| `invoices.create` | the original invoice and `checkoutUrl` |
+| `vcc.charge` | the original charge |
+| `cards.charge` | the original charge |
+| `payments.refund` | the original refund |
+| `recurring.create` | the original mandate |
+
+```ts
+await paylink.vcc.charge({ /* card + order fields */ }, { idempotencyKey: 'vcc-order-1234' });
+await paylink.cards.charge({ /* token + order fields */ }, { idempotencyKey: 'tok-order-1234' });
+await paylink.invoices.create({ /* customer + order fields */ }, { idempotencyKey: 'order-1234' });
+```
+
+Reusing a key with a *different* request — for example `recurring.create` with
+changed terms, or `payments.refund` for a different amount — is rejected as a
+conflict: a `PaylinkApiError` with `isIdempotencyConflict` set (HTTP 409). Only
+the endpoints above honor the header.
+
 ## Verifying webhooks
 
 Pass the **parsed JSON body** (or the raw string) to `verify`. It recomputes the
