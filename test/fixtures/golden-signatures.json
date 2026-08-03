@@ -1,0 +1,419 @@
+{
+    "hashToken": "test_hash_token_abc123",
+    "cases": [
+        {
+            "name": "invoices.create full",
+            "endpoint": "INVOICE_CREATE",
+            "input": {
+                "firstName": "John",
+                "lastName": "Doe",
+                "email": "john@example.com",
+                "orderTitle": "Gold Plan",
+                "orderAmount": 250,
+                "address": "1 Main St",
+                "city": "Cairo",
+                "country": "EG",
+                "state": "C",
+                "currency": "USD",
+                "redirectionUrl": "https://shop.example.com/return",
+                "webhookUrl": "https://shop.example.com/webhook",
+                "orderDetails": "note",
+                "paymentMode": "authorize"
+            },
+            "values": [
+                "John",
+                "Doe",
+                "john@example.com",
+                "Gold Plan",
+                "250",
+                "1 Main St",
+                "Cairo",
+                "EG",
+                "C",
+                "USD",
+                "https://shop.example.com/return",
+                "https://shop.example.com/webhook",
+                "note"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "HpF+SI9LirGLrMLvVeFVbgxg4P+reftqQoBd3PEGc9M="
+        },
+        {
+            "name": "invoices.create minimal (optionals skipped)",
+            "endpoint": "INVOICE_CREATE",
+            "input": {
+                "firstName": "Jane",
+                "lastName": "Roe",
+                "email": "jane@example.com",
+                "orderTitle": "Basic",
+                "orderAmount": "100.00",
+                "currency": "EGP"
+            },
+            "values": [
+                "Jane",
+                "Roe",
+                "jane@example.com",
+                "Basic",
+                "100.00",
+                "EGP"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "TSN92zc8DASlsgxV8jRgAIkDjeePVScATZ9y5ylfWUk="
+        },
+        {
+            "name": "payments.void",
+            "endpoint": "PAYMENT_VOID",
+            "input": {
+                "invoiceId": 12345
+            },
+            "values": [
+                "12345"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "d4Pe2LooHfRZ0El0uFAMxV+/8tEX5i4RZo+4sRt0NqA="
+        },
+        {
+            "name": "payments.refund",
+            "endpoint": "PAYMENT_REFUND",
+            "input": {
+                "invoiceId": 12345,
+                "amount": "10.50"
+            },
+            "values": [
+                "12345",
+                "10.50"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "+gYgMephgTl8w7XtNKtPni2H1wHwRNTT0y+70agfUmk="
+        },
+        {
+            "name": "payments.settle",
+            "endpoint": "PAYMENT_SETTLE",
+            "input": {
+                "invoiceId": 777,
+                "amount": 50
+            },
+            "values": [
+                "777",
+                "50"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "Z2Y02Wx2VeE0cfecxRrVbMd4BGlvtp9f7ta8S2JrpG0="
+        },
+        {
+            "name": "payments.reverseAuthorization",
+            "endpoint": "PAYMENT_REVERSE_AUTHORIZATION",
+            "input": {
+                "invoiceId": 42
+            },
+            "values": [
+                "42"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "ktTmBLnCppRJ8/EVaV8G8X3sUe1JKDyo+9E3Qwli3II="
+        },
+        {
+            "name": "payments.checkStatus",
+            "endpoint": "PAYMENT_CHECK_STATUS",
+            "input": {
+                "invoiceId": 42
+            },
+            "values": [
+                "42"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "ktTmBLnCppRJ8/EVaV8G8X3sUe1JKDyo+9E3Qwli3II="
+        },
+        {
+            "name": "vcc.charge US (state block)",
+            "endpoint": "VCC_CHARGE",
+            "input": {
+                "firstName": "Sam",
+                "lastName": "Smith",
+                "email": "sam@example.com",
+                "phone": "+15551234567",
+                "currencyId": 1,
+                "price": 100,
+                "product": "Widget",
+                "referenceNumber": "ref-1",
+                "cardNumber": "4111111111111111",
+                "cardExpiryMonth": "12",
+                "cardExpiryYear": "2030",
+                "cardCvv": "123",
+                "country": "US",
+                "address": "5 Ave",
+                "city": "NYC",
+                "usState": "NY",
+                "postalCode": "10001"
+            },
+            "values": [
+                "Sam",
+                "Smith",
+                "sam@example.com",
+                "+15551234567",
+                "1",
+                "100",
+                "Widget",
+                "ref-1",
+                "4111111111111111",
+                "12",
+                "2030",
+                "123",
+                "US",
+                "5 Ave",
+                "NYC",
+                "NY",
+                "10001"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "v6wPjjyQDiMCrYotU/ZarN1WcpcfUBo4pWzMXsNnWYY="
+        },
+        {
+            "name": "vcc.charge EG minimal (optionals skipped, no state block)",
+            "endpoint": "VCC_CHARGE",
+            "input": {
+                "firstName": "Ali",
+                "lastName": "Hassan",
+                "currencyId": 2,
+                "price": "75",
+                "product": "Book",
+                "cardNumber": "4111111111111111",
+                "cardExpiryMonth": "01",
+                "cardExpiryYear": "2031",
+                "country": "EG",
+                "address": "Nile St",
+                "city": "Giza"
+            },
+            "values": [
+                "Ali",
+                "Hassan",
+                "2",
+                "75",
+                "Book",
+                "4111111111111111",
+                "01",
+                "2031",
+                "EG",
+                "Nile St",
+                "Giza"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "x5FKiRcBRTKvrZ+0TQqcI60Z1pihYXvQi3RuFVfXkq0="
+        },
+        {
+            "name": "cards.tokenize CA (state block)",
+            "endpoint": "CARD_TOKENIZE",
+            "input": {
+                "firstName": "Marie",
+                "lastName": "Tremblay",
+                "email": "marie@example.com",
+                "customerReference": "cust-9",
+                "externalReference": "ext-9",
+                "cardNumber": "4111111111111111",
+                "cardExpiryMonth": "06",
+                "cardExpiryYear": "2032",
+                "cardCvv": "999",
+                "country": "CA",
+                "address": "10 King St",
+                "city": "Toronto",
+                "canadaState": "ON",
+                "postalCode": "M5H 2N2"
+            },
+            "values": [
+                "Marie",
+                "Tremblay",
+                "marie@example.com",
+                "cust-9",
+                "ext-9",
+                "4111111111111111",
+                "06",
+                "2032",
+                "999",
+                "CA",
+                "10 King St",
+                "Toronto",
+                "ON",
+                "M5H 2N2"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "ALUp1bLepa4ASRxdXvkSt6oATQ9bKsMD3sOTw9uNEpI="
+        },
+        {
+            "name": "cards.charge US",
+            "endpoint": "CARD_CHARGE",
+            "input": {
+                "cardToken": "tok_abc",
+                "initiator": "merchant",
+                "firstName": "Sam",
+                "lastName": "Smith",
+                "email": "sam@example.com",
+                "currency": "USD",
+                "price": 100,
+                "product": "Rebill",
+                "referenceNumber": "order-7",
+                "country": "US",
+                "address": "5 Ave",
+                "city": "NYC",
+                "usState": "NY",
+                "postalCode": "10001"
+            },
+            "values": [
+                "tok_abc",
+                "merchant",
+                "Sam",
+                "Smith",
+                "sam@example.com",
+                "USD",
+                "100",
+                "Rebill",
+                "order-7",
+                "US",
+                "5 Ave",
+                "NYC",
+                "NY",
+                "10001"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "FughnmcuNhZUBD1k8rI2/qODGbtO8h8DEccey/T7SsE="
+        },
+        {
+            "name": "cards.revoke",
+            "endpoint": "CARD_REVOKE",
+            "input": {
+                "cardToken": "tok_xyz"
+            },
+            "values": [
+                "tok_xyz"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "W3Pk+G/Xn67/tuKXJhUtF9Euk/NtVMttaKF7uenaLG8="
+        },
+        {
+            "name": "recurring.create full",
+            "endpoint": "RECURRING_CREATE",
+            "input": {
+                "firstName": "Sam",
+                "lastName": "Doe",
+                "email": "sam@example.com",
+                "orderTitle": "Gold",
+                "orderAmount": 250,
+                "currency": "USD",
+                "cadenceInterval": "month",
+                "cadenceCount": 1,
+                "totalCycles": 12,
+                "endDate": "2027-01-01",
+                "consentText": "I authorise monthly charges.",
+                "externalReference": "sub_1",
+                "redirectionUrl": "https://shop.example.com/r",
+                "webhookUrl": "https://shop.example.com/w"
+            },
+            "values": [
+                "Sam",
+                "Doe",
+                "sam@example.com",
+                "Gold",
+                "250",
+                "USD",
+                "month",
+                "1",
+                "12",
+                "2027-01-01",
+                "I authorise monthly charges.",
+                "sub_1",
+                "https://shop.example.com/r",
+                "https://shop.example.com/w"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "WhKcyD4mgwk+/3N3vpKLrPuADXt0tduRxYpZ7oeucOM="
+        },
+        {
+            "name": "recurring.create minimal (optionals skipped)",
+            "endpoint": "RECURRING_CREATE",
+            "input": {
+                "firstName": "Sam",
+                "lastName": "Doe",
+                "email": "sam@example.com",
+                "orderTitle": "Gold",
+                "orderAmount": 250,
+                "currency": "USD",
+                "cadenceInterval": "month",
+                "cadenceCount": 1,
+                "consentText": "I authorise monthly charges."
+            },
+            "values": [
+                "Sam",
+                "Doe",
+                "sam@example.com",
+                "Gold",
+                "250",
+                "USD",
+                "month",
+                "1",
+                "I authorise monthly charges."
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "+iqRMH/msH9xOx7JrzuRVn3VBzhfNQNaG72hbtzCl+c="
+        },
+        {
+            "name": "recurring mandate action (uid only)",
+            "endpoint": "RECURRING_MANDATE_ACTION",
+            "input": {
+                "mandateId": "MANDATE_UID_123"
+            },
+            "values": [
+                "MANDATE_UID_123"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "1Ng/0JPHFEw2oy50UV5yPwUBg13qdYiQEG+eVJ0BGrk="
+        },
+        {
+            "name": "webhook invoice.paid (message null)",
+            "endpoint": "WEBHOOK",
+            "input": {
+                "event": "invoice.paid",
+                "event_triggered_at": "2026-08-03T10:00:00Z",
+                "timezone": "Z",
+                "success": 1,
+                "invoice_id": 123,
+                "invoice_status": "PAID",
+                "message": null
+            },
+            "values": [
+                "1",
+                "123",
+                "PAID",
+                ""
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "+obQT6T6ZLgmu3sXBEcvXHebHHHaAbuLwIi5yUZFANE="
+        },
+        {
+            "name": "webhook subscription.charged (optionals present)",
+            "endpoint": "WEBHOOK",
+            "input": {
+                "event": "subscription.charged",
+                "event_triggered_at": "2026-08-03T10:00:00Z",
+                "timezone": "Z",
+                "success": 1,
+                "invoice_id": 555,
+                "invoice_status": "PAID",
+                "message": "ok",
+                "auth_code": "A1",
+                "mandate_id": "M-1",
+                "external_reference": "sub_1",
+                "subscription_status": "active"
+            },
+            "values": [
+                "1",
+                "555",
+                "PAID",
+                "ok",
+                "M-1",
+                "sub_1",
+                "active"
+            ],
+            "hashToken": "test_hash_token_abc123",
+            "expected": "rk5BFKdp6JRLCX70/iPThwaybLuHV9t/AXaBRPA/J2E="
+        }
+    ]
+}

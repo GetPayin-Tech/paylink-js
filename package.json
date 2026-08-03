@@ -1,0 +1,57 @@
+{
+  "name": "@getpayin-tech/paylink-js",
+  "version": "0.1.0",
+  "description": "Official server-side Node.js/TypeScript SDK for the PayLink payment integration API (checkouts, payment operations, card tokens, recurring mandates, webhook verification).",
+  "keywords": [
+    "paylink",
+    "getpayin",
+    "payments",
+    "payment-gateway",
+    "checkout",
+    "webhooks",
+    "cybersource"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GetPayin-Tech/paylink-js.git"
+  },
+  "homepage": "https://github.com/GetPayin-Tech/paylink-js#readme",
+  "bugs": {
+    "url": "https://github.com/GetPayin-Tech/paylink-js/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
