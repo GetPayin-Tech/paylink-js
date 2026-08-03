@@ -17,7 +17,10 @@ export class Invoices {
    * Create an invoice and return a temporary signed checkout URL
    * (`POST /api/v2/integration/init`). Redirect the payer to `checkoutUrl`.
    */
-  async create(params: CreateInvoiceParams, overrides?: RequestOverrides): Promise<CreateInvoiceResult> {
+  async create(
+    params: CreateInvoiceParams,
+    overrides?: RequestOverrides,
+  ): Promise<CreateInvoiceResult> {
     const body = buildSignedBody(
       INVOICE_CREATE,
       params,

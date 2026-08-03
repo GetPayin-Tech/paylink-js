@@ -40,11 +40,32 @@ jobs:
             exit 1
           fi
 
+      - name: Verify src/version.ts matches package.json
+        run: |
+          SRC="$(node -p "require('fs').readFileSync('src/version.ts','utf8').match(/VERSION = '([^']+)'/)[1]")"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$SRC" != "$PKG" ]; then
+            echo "::error::src/version.ts ($SRC) does not match package.json ($PKG) — the User-Agent would report the wrong version"
+            exit 1
+          fi
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Test
         run: npm test
 
       - name: Build
         run: npm run build
+
+      - name: Smoke-test the built package
+        run: npm run smoke
+
+      - name: Validate package exports and metadata
+        run: npm run check:exports
 
       - name: Publish to npm (public, with provenance)
         run: npm publish --provenance --access public

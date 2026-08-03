@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # Not restricted to `main` — stacked PRs target another branch and must still
+  # run CI before they are merged down the chain.
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,6 +16,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  quality:
+    name: lint, format, types, coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test with coverage
+        run: npm run test:coverage
+
   test:
     name: test (node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
@@ -34,11 +62,33 @@ jobs:
 
       - run: npm ci
 
-      - name: Typecheck
-        run: npm run typecheck
-
       - name: Test
         run: npm test
 
+  package:
+    name: build, smoke, exports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+
       - name: Build
         run: npm run build
+
+      # CI used to build dist/ and throw it away. Load the built artifact the
+      # way a consumer would, in both module systems.
+      - name: Smoke-test the built package
+        run: npm run smoke
+
+      # Catches a broken exports map or the wrong .d.ts per format before
+      # publish — this is what found the CJS-masquerading-as-ESM bug.
+      - name: Validate package exports and metadata
+        run: npm run check:exports
