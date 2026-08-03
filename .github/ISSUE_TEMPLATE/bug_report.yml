@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a defect in the PayLink JS SDK
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. For a **security vulnerability**, do not use this form — report it privately per the [security policy](https://github.com/GetPayin-Tech/paylink-js/security/advisories/new).
+
+        Never paste a real `hashToken`, `publicToken`, card number, or CVV into this issue.
+  - type: input
+    id: sdk-version
+    attributes:
+      label: SDK version
+      description: The installed version of `@getpayin-tech/paylink-js`.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      description: Output of `node --version`.
+      placeholder: v20.11.0
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including the resource/method involved (e.g. `invoices.create`, `webhooks.verify`).
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: A minimal code snippet that triggers the bug. Redact all tokens and card data.
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors or logs
+      description: Any error message or stack trace. Review it for secrets before pasting.
+      render: shell
+    validations:
+      required: false
