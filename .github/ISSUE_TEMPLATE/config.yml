@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/GetPayin-Tech/paylink-js/security/advisories/new
+    about: Do not open a public issue for a security problem. Report it privately here or email tech@getpayin.com.
+  - name: Payment integration API reference
+    url: https://pay.getpayin.com/docs/payment_integration/index.html
+    about: Questions about the API contract itself (fields, endpoints, signing) are documented here.
