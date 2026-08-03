@@ -98,8 +98,6 @@ export class Webhooks {
       mandateId: payload.mandate_id,
       externalReference: payload.external_reference,
       subscriptionStatus: payload.subscription_status,
-      refundAmount: payload.refund_amount,
-      refundCurrency: payload.refund_currency,
       raw: payload,
     };
   }

@@ -240,8 +240,6 @@ export interface WebhookPayload {
   mandate_id?: string;
   external_reference?: string;
   subscription_status?: string;
-  refund_amount?: number | string;
-  refund_currency?: string;
   signature?: string;
   [key: string]: unknown;
 }
@@ -259,7 +257,5 @@ export interface WebhookEvent {
   mandateId?: string;
   externalReference?: string;
   subscriptionStatus?: string;
-  refundAmount?: number | string;
-  refundCurrency?: string;
   raw: WebhookPayload;
 }

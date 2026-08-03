@@ -132,6 +132,45 @@ describe('execute', () => {
     ).rejects.toBeInstanceOf(PaylinkConnectionError);
   });
 
+  it('does not send the request when the caller signal is already aborted', async () => {
+    let sent = false;
+    const fetch: FetchLike = async () => {
+      sent = true;
+
+      throw new Error('should never be reached');
+    };
+
+    const error = (await execute(fakeConfig({ fetch }), {
+      method: 'POST',
+      path: '/api/integration/refund',
+      body: {},
+      signal: AbortSignal.abort(),
+    }).catch((e) => e)) as PaylinkConnectionError;
+
+    expect(sent).toBe(false);
+    expect(error).toBeInstanceOf(PaylinkConnectionError);
+    expect(error.message).toContain('aborted before it was sent');
+  });
+
+  it('aborts an in-flight request when the caller signal fires', async () => {
+    const controller = new AbortController();
+    const fetch: FetchLike = (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+        setTimeout(() => controller.abort(), 5);
+      });
+
+    const error = (await execute(fakeConfig({ fetch }), {
+      method: 'POST',
+      path: '/x',
+      body: {},
+      signal: controller.signal,
+    }).catch((e) => e)) as PaylinkConnectionError;
+
+    expect(error).toBeInstanceOf(PaylinkConnectionError);
+    expect(error.message).toContain('failed');
+  });
+
   it('times out and throws PaylinkConnectionError', async () => {
     const fetch: FetchLike = (_url, init) =>
       new Promise((_resolve, reject) => {
