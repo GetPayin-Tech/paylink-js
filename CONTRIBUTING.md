@@ -60,6 +60,40 @@ produces `expected`.
 **Adding a field to an endpoint without adding a golden case means that field's
 position is untested.**
 
+## Webhooks sign by opt-out — the mirror-image trap
+
+Requests sign by opt-**in**: `fieldOrders.ts` lists exactly what gets signed.
+Webhooks are the opposite. `PaymentIntegrationWebhookJob` copies the whole
+payload and `unset()`s a fixed exclusion list before hashing:
+
+```php
+$signatureData = $data;
+unset($signatureData['event'], …['event_triggered_at'], …['timezone'], …['auth_code']);
+$data['signature'] = $integration->buildSignatureString($signatureData);
+```
+
+So **whether a new webhook field is signed depends on where in that job it is
+added** — before the `unset()` it is signed; after `buildSignatureString()` it
+is not. `auth_code` is the existing example of the second case: sent in the
+payload, deliberately unsigned.
+
+`OPTIONAL_SIGNED` in `src/webhooks.ts` must mirror that decision, and because
+presence is detected with `hasOwnProperty`, it is a strict either/or:
+
+| Server behaviour                     | `OPTIONAL_SIGNED`    |
+| ------------------------------------ | -------------------- |
+| Signs the field (added before unset) | **must** list it     |
+| Sends it unsigned (added after)      | **must not** list it |
+
+Getting it backwards breaks verification for every webhook carrying that field,
+in **either** direction — adding an unsigned field to the list is just as broken
+as omitting a signed one. Fields outside both lists are ignored entirely, so
+unrelated payload additions are safe.
+
+Both directions are pinned in `test/webhooks.test.ts` under
+`signed-field membership is an either/or`. When the server adds a webhook field,
+update that list and add a golden vector in the same change.
+
 ## Retry safety
 
 Requests are only ever replayed when replaying cannot double-charge: GETs,

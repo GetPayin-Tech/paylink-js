@@ -7,7 +7,27 @@ import type { WebhookEvent, WebhookPayload } from './types';
 /** Always-signed webhook fields, in concatenation order (null renders as ''). */
 const ALWAYS_SIGNED = ['success', 'invoice_id', 'invoice_status', 'message'] as const;
 
-/** Optionally-signed fields, appended in this order only when present. */
+/**
+ * Optionally-signed fields, appended in this order only when present.
+ *
+ * ⚠️ Membership here is an EITHER/OR, not an additive safety net. Presence is
+ * detected with `hasOwnProperty`, so a field listed here is signed whenever the
+ * payload carries it.
+ *
+ * The server signs by opt-OUT: `PaymentIntegrationWebhookJob` copies the whole
+ * payload and `unset()`s a fixed exclusion list before hashing. So a new webhook
+ * field is signed if it is added to `$data` before that `unset()`, and unsigned
+ * if it is added after the signature is computed — which is exactly what
+ * `auth_code` does, and why `auth_code` is deliberately absent from this list.
+ *
+ * Therefore, for any new field:
+ *   - server signs it          -> it MUST be listed here, in the server's order
+ *   - server sends it unsigned -> it MUST NOT be listed here
+ *
+ * Getting it backwards breaks verification for every webhook carrying the field,
+ * in either direction. Fields outside both lists are ignored entirely, so
+ * unrelated payload additions are safe.
+ */
 const OPTIONAL_SIGNED = ['mandate_id', 'external_reference', 'subscription_status'] as const;
 
 /**
