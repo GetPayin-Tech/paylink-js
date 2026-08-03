@@ -5,7 +5,9 @@ import golden from './fixtures/golden-signatures.json';
 describe('buildSignature', () => {
   it('matches the PHP-generated golden vector for every case', () => {
     for (const testCase of golden.cases) {
-      expect(buildSignature(testCase.values, golden.hashToken), testCase.name).toBe(testCase.expected);
+      expect(buildSignature(testCase.values, golden.hashToken), testCase.name).toBe(
+        testCase.expected,
+      );
     }
   });
 

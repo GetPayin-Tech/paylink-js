@@ -51,11 +51,16 @@ describe('execute', () => {
   });
 
   it('throws PaylinkApiError with message and status on a non-2xx response', async () => {
-    const { fetch } = fakeFetch(() => ({ status: 422, json: { success: false, message: 'Invalid signature.' } }));
+    const { fetch } = fakeFetch(() => ({
+      status: 422,
+      json: { success: false, message: 'Invalid signature.' },
+    }));
 
-    const error = (await execute(fakeConfig({ fetch }), { method: 'POST', path: '/x', body: {} }).catch(
-      (e) => e,
-    )) as PaylinkApiError;
+    const error = (await execute(fakeConfig({ fetch }), {
+      method: 'POST',
+      path: '/x',
+      body: {},
+    }).catch((e) => e)) as PaylinkApiError;
 
     expect(error).toBeInstanceOf(PaylinkApiError);
     expect(error.status).toBe(422);
@@ -63,11 +68,16 @@ describe('execute', () => {
   });
 
   it('throws PaylinkApiError on a 200 body with success:false', async () => {
-    const { fetch } = fakeFetch(() => ({ status: 200, json: { success: false, message: 'nope', errors: { x: ['y'] } } }));
+    const { fetch } = fakeFetch(() => ({
+      status: 200,
+      json: { success: false, message: 'nope', errors: { x: ['y'] } },
+    }));
 
-    const error = (await execute(fakeConfig({ fetch }), { method: 'POST', path: '/x', body: {} }).catch(
-      (e) => e,
-    )) as PaylinkApiError;
+    const error = (await execute(fakeConfig({ fetch }), {
+      method: 'POST',
+      path: '/x',
+      body: {},
+    }).catch((e) => e)) as PaylinkApiError;
 
     expect(error).toBeInstanceOf(PaylinkApiError);
     expect(error.errors).toEqual({ x: ['y'] });
@@ -76,12 +86,18 @@ describe('execute', () => {
   it('surfaces a feature-disabled 403 as PaylinkApiError with status, message, and isForbidden', async () => {
     const { fetch } = fakeFetch(() => ({
       status: 403,
-      json: { success: false, message: 'Card tokenization is not enabled for your account. Please contact the business team.' },
+      json: {
+        success: false,
+        message:
+          'Card tokenization is not enabled for your account. Please contact the business team.',
+      },
     }));
 
-    const error = (await execute(fakeConfig({ fetch }), { method: 'POST', path: '/x', body: {} }).catch(
-      (e) => e,
-    )) as PaylinkApiError;
+    const error = (await execute(fakeConfig({ fetch }), {
+      method: 'POST',
+      path: '/x',
+      body: {},
+    }).catch((e) => e)) as PaylinkApiError;
 
     expect(error).toBeInstanceOf(PaylinkApiError);
     expect(error.status).toBe(403);
@@ -92,32 +108,47 @@ describe('execute', () => {
   it('maps a recurring resume 403 whose message is nested under data', async () => {
     const { fetch } = fakeFetch(() => ({
       status: 403,
-      json: { data: { message: 'Recurring payments is disabled for this company.' }, success: false },
+      json: {
+        data: { message: 'Recurring payments is disabled for this company.' },
+        success: false,
+      },
     }));
 
-    const error = (await execute(fakeConfig({ fetch }), { method: 'POST', path: '/x', body: {} }).catch(
-      (e) => e,
-    )) as PaylinkApiError;
+    const error = (await execute(fakeConfig({ fetch }), {
+      method: 'POST',
+      path: '/x',
+      body: {},
+    }).catch((e) => e)) as PaylinkApiError;
 
     expect(error.isForbidden).toBe(true);
     expect(error.message).toBe('Recurring payments is disabled for this company.');
   });
 
   it('flags idempotency conflicts (409)', async () => {
-    const { fetch } = fakeFetch(() => ({ status: 409, json: { data: null, success: false, message: 'dup' } }));
-    const error = (await execute(fakeConfig({ fetch }), { method: 'POST', path: '/x', body: {} }).catch(
-      (e) => e,
-    )) as PaylinkApiError;
+    const { fetch } = fakeFetch(() => ({
+      status: 409,
+      json: { data: null, success: false, message: 'dup' },
+    }));
+    const error = (await execute(fakeConfig({ fetch }), {
+      method: 'POST',
+      path: '/x',
+      body: {},
+    }).catch((e) => e)) as PaylinkApiError;
 
     expect(error.isIdempotencyConflict).toBe(true);
     expect(error.message).toBe('dup');
   });
 
   it('falls back to data.message when the top-level message is absent', async () => {
-    const { fetch } = fakeFetch(() => ({ status: 409, json: { data: { message: 'nested dup' }, success: false } }));
-    const error = (await execute(fakeConfig({ fetch }), { method: 'POST', path: '/x', body: {} }).catch(
-      (e) => e,
-    )) as PaylinkApiError;
+    const { fetch } = fakeFetch(() => ({
+      status: 409,
+      json: { data: { message: 'nested dup' }, success: false },
+    }));
+    const error = (await execute(fakeConfig({ fetch }), {
+      method: 'POST',
+      path: '/x',
+      body: {},
+    }).catch((e) => e)) as PaylinkApiError;
 
     expect(error.message).toBe('nested dup');
   });

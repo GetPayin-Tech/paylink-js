@@ -1,6 +1,8 @@
-# @GetPayin-Tech/paylink-js
+# @getpayin-tech/paylink-js
 
 [![CI](https://github.com/GetPayin-Tech/paylink-js/actions/workflows/ci.yml/badge.svg)](https://github.com/GetPayin-Tech/paylink-js/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@getpayin-tech/paylink-js.svg)](https://www.npmjs.com/package/@getpayin-tech/paylink-js)
+[![install size](https://packagephobia.com/badge?p=@getpayin-tech/paylink-js)](https://packagephobia.com/result?p=@getpayin-tech/paylink-js)
 
 Official **server-side** Node.js/TypeScript SDK for the PayLink payment
 integration API. It wraps every integration endpoint with an idiomatic, typed
@@ -19,8 +21,11 @@ never have to build them by hand.
 
 ## Requirements
 
-- Node.js **18+** (uses the built-in global `fetch` and `node:crypto`)
+- Node.js **18+** (uses the built-in global `fetch` and `node:crypto`).
+  Node 18 reached end-of-life in April 2025 — it is still supported and tested
+  here, but new projects should be on 20 or 22.
 - Zero runtime dependencies
+- Ships ESM and CommonJS builds with per-format type declarations
 
 ## Install
 
@@ -170,12 +175,12 @@ app.post('/webhooks/paylink', express.json(), (req, res) => {
 
 Every failure is a subclass of `PaylinkError`:
 
-| Error | When |
-| --- | --- |
-| `PaylinkConfigError` | Invalid client configuration (missing tokens, no `fetch`). |
-| `PaylinkApiError` | The API returned an error. Carries `status`, `errors`, `raw`, `retryAfterMs`, `isIdempotencyConflict` (409), `isRateLimited` (429), and `isForbidden` (403 — e.g. card tokenization or recurring payments not enabled for the account). |
-| `PaylinkSignatureError` | A webhook signature did not verify. |
-| `PaylinkConnectionError` | Network failure or timeout (no HTTP response). |
+| Error                    | When                                                                                                                                                                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PaylinkConfigError`     | Invalid client configuration (missing tokens, no `fetch`).                                                                                                                                                                              |
+| `PaylinkApiError`        | The API returned an error. Carries `status`, `errors`, `raw`, `retryAfterMs`, `isIdempotencyConflict` (409), `isRateLimited` (429), and `isForbidden` (403 — e.g. card tokenization or recurring payments not enabled for the account). |
+| `PaylinkSignatureError`  | A webhook signature did not verify.                                                                                                                                                                                                     |
+| `PaylinkConnectionError` | Network failure or timeout (no HTTP response).                                                                                                                                                                                          |
 
 ```ts
 import { PaylinkApiError } from '@getpayin-tech/paylink-js';
@@ -199,11 +204,11 @@ when present.
 
 **A request is only ever replayed when replaying it cannot double-charge:**
 
-| Replayed | Not replayed |
-| --- | --- |
-| All `GET`s (`recurring.status`) | `vcc.charge`, `cards.charge`, `cards.tokenize` |
+| Replayed                                 | Not replayed                                        |
+| ---------------------------------------- | --------------------------------------------------- |
+| All `GET`s (`recurring.status`)          | `vcc.charge`, `cards.charge`, `cards.tokenize`      |
 | Any call you pass an `idempotencyKey` to | `invoices.create`, `recurring.create` without a key |
-| `payments.checkStatus` (a pure read) | `recurring.cancel` / `pause` / `resume` |
+| `payments.checkStatus` (a pure read)     | `recurring.cancel` / `pause` / `resume`             |
 
 So to make a refund safely retryable, pass an idempotency key — otherwise a
 failed refund surfaces immediately and is yours to handle:
@@ -245,6 +250,14 @@ Numbers are accepted and stringified, but strings give you full control.
 The full HTTP API — endpoints, fields, error codes, and test cards — is
 documented in the PayLink API reference:
 <https://pay.getpayin.com/docs/payment_integration/index.html>
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — in particular the note on signed-field
+ordering, which is the one thing that must stay in lockstep with the server.
+
+Security issues: see [SECURITY.md](SECURITY.md). Please do not open a public
+issue for a vulnerability.
 
 ## License
 

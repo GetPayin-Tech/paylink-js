@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PaylinkError, PaylinkSignatureError } from '../src/errors';
+import { WebhookEventType } from '../src/types';
 import type { WebhookPayload } from '../src/types';
 import { Webhooks } from '../src/webhooks';
 import { fakeConfig } from './helpers';
@@ -83,5 +84,27 @@ describe('Webhooks.isValid', () => {
     tampered.invoice_id = 999;
 
     expect(webhooks.isValid(tampered)).toBe(false);
+  });
+});
+
+describe('WebhookEventType', () => {
+  it('is a runtime value whose entries match the wire event names', () => {
+    expect(WebhookEventType.InvoicePaid).toBe('invoice.paid');
+    expect(WebhookEventType.SubscriptionCharged).toBe('subscription.charged');
+    expect(WebhookEventType.CardTokenChargeFailed).toBe('card_token.charge_failed');
+
+    const names = Object.values(WebhookEventType);
+    expect(new Set(names).size).toBe(names.length);
+    for (const name of names) {
+      expect(name).toMatch(/^[a-z_]+\.[a-z_]+$/);
+    }
+  });
+
+  it('covers every event name the golden webhook fixtures use', () => {
+    const known = new Set<string>(Object.values(WebhookEventType));
+
+    for (const testCase of webhookCases) {
+      expect(known, testCase.name).toContain((testCase.input as WebhookPayload).event);
+    }
   });
 });

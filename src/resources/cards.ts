@@ -15,7 +15,12 @@ import type {
 
 interface RawTokenize {
   token: string;
-  card: { brand: string | null; last4: string | null; exp_month: number | null; exp_year: number | null };
+  card: {
+    brand: string | null;
+    last4: string | null;
+    exp_month: number | null;
+    exp_year: number | null;
+  };
   status: string;
 }
 
@@ -36,7 +41,10 @@ export class Cards {
   constructor(private readonly config: ResolvedConfig) {}
 
   /** Vault a card and return a reusable token (`POST /api/v2/integration/tokens/card`). */
-  async tokenize(params: TokenizeCardParams, overrides?: RequestOverrides): Promise<TokenizeCardResult> {
+  async tokenize(
+    params: TokenizeCardParams,
+    overrides?: RequestOverrides,
+  ): Promise<TokenizeCardResult> {
     const data = await this.send<RawTokenize, TokenizeCardParams>(CARD_TOKENIZE, params, overrides);
 
     return {
@@ -52,7 +60,10 @@ export class Cards {
   }
 
   /** Charge a previously vaulted card (`POST /api/v2/integration/tokens/charge`). */
-  async charge(params: ChargeTokenParams, overrides?: RequestOverrides): Promise<ChargeTokenResult> {
+  async charge(
+    params: ChargeTokenParams,
+    overrides?: RequestOverrides,
+  ): Promise<ChargeTokenResult> {
     const data = await this.send<RawTokenCharge, ChargeTokenParams>(CARD_CHARGE, params, overrides);
 
     return {
@@ -66,7 +77,10 @@ export class Cards {
   }
 
   /** Revoke a vaulted card token (`POST /api/v2/integration/tokens/revoke`). Idempotent. */
-  async revoke(params: RevokeTokenParams, overrides?: RequestOverrides): Promise<RevokeTokenResult> {
+  async revoke(
+    params: RevokeTokenParams,
+    overrides?: RequestOverrides,
+  ): Promise<RevokeTokenResult> {
     const data = await this.send<RawRevoke, RevokeTokenParams>(CARD_REVOKE, params, overrides);
 
     return { message: data.message ?? 'Token revoked.' };

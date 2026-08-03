@@ -37,7 +37,10 @@ export class Recurring {
    * (setup) charge (`POST /api/v2/integration/recurring/init`). Pass
    * `idempotencyKey` (or `externalReference`) to make retries safe.
    */
-  async create(params: CreateRecurringParams, overrides?: RequestOverrides): Promise<CreateRecurringResult> {
+  async create(
+    params: CreateRecurringParams,
+    overrides?: RequestOverrides,
+  ): Promise<CreateRecurringResult> {
     const body = buildSignedBody(
       RECURRING_CREATE,
       params,
@@ -95,7 +98,11 @@ export class Recurring {
     return this.action<ResumeMandateResult>(mandateId, 'resume', overrides);
   }
 
-  private async action<T>(mandateId: string, action: string, overrides?: RequestOverrides): Promise<T> {
+  private async action<T>(
+    mandateId: string,
+    action: string,
+    overrides?: RequestOverrides,
+  ): Promise<T> {
     return execute<T>(this.config, {
       method: 'POST',
       path: `${this.mandatePath(mandateId)}/${action}`,
