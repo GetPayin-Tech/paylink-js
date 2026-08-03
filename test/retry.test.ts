@@ -215,9 +215,9 @@ describe('User-Agent', () => {
 
 describe('VERSION', () => {
   it('stays in sync with package.json', () => {
-    const pkg = JSON.parse(
-      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
-    ) as { version: string };
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string;
+    };
 
     expect(VERSION).toBe(pkg.version);
   });

@@ -23,7 +23,6 @@ import golden from './fixtures/golden-signatures.json';
  * to a widened `Record<string, unknown>` form. Erasure is confined to this
  * harness — production call sites are fully checked.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySpec = EndpointSpec<any>;
 
 const SPECS: Record<string, AnySpec> = {
@@ -96,7 +95,16 @@ describe('buildSignedBody — body construction rules', () => {
     expect(body).not.toHaveProperty('city');
     expect(body).not.toHaveProperty('order_details');
     expect(Object.keys(body).sort()).toEqual(
-      ['currency', 'email', 'first_name', 'last_name', 'order_amount', 'order_title', 'signature', 'token'].sort(),
+      [
+        'currency',
+        'email',
+        'first_name',
+        'last_name',
+        'order_amount',
+        'order_title',
+        'signature',
+        'token',
+      ].sort(),
     );
   });
 

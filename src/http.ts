@@ -162,7 +162,12 @@ async function attemptRequest<T>(config: ResolvedConfig, options: RequestOptions
   let response: FetchResponse;
 
   try {
-    response = await config.fetch(url, { method: options.method, headers, body, signal: controller.signal });
+    response = await config.fetch(url, {
+      method: options.method,
+      headers,
+      body,
+      signal: controller.signal,
+    });
   } catch (error) {
     if (controller.signal.aborted && !options.signal?.aborted) {
       throw new PaylinkConnectionError(
@@ -189,7 +194,11 @@ async function attemptRequest<T>(config: ResolvedConfig, options: RequestOptions
     );
   }
 
-  if (parsed !== null && typeof parsed === 'object' && 'data' in (parsed as Record<string, unknown>)) {
+  if (
+    parsed !== null &&
+    typeof parsed === 'object' &&
+    'data' in (parsed as Record<string, unknown>)
+  ) {
     return (parsed as { data: T }).data;
   }
 
@@ -256,8 +265,12 @@ function toApiError(
   rawText: string,
   retryAfterMs?: number,
 ): PaylinkApiError {
-  const envelope = parsed !== null && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
-  const nestedData = envelope.data !== null && typeof envelope.data === 'object' ? (envelope.data as Record<string, unknown>) : {};
+  const envelope =
+    parsed !== null && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+  const nestedData =
+    envelope.data !== null && typeof envelope.data === 'object'
+      ? (envelope.data as Record<string, unknown>)
+      : {};
   const message =
     firstString(envelope.message, nestedData.message) ??
     `PayLink API request failed with status ${status}.`;

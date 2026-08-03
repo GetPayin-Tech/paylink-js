@@ -1,0 +1,22 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # The SDK ships zero runtime dependencies, so everything here is tooling.
+      # Grouping keeps the noise to one PR a week.
+      dev-dependencies:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

@@ -32,7 +32,9 @@ export class Payments {
 
   /** Void a paid invoice (`POST /api/integration/void`). */
   async void(params: InvoiceRef, overrides?: RequestOverrides): Promise<PaymentResult> {
-    return this.mapPayment(await this.send<RawPayment, InvoiceRef>(PAYMENT_VOID, params, overrides));
+    return this.mapPayment(
+      await this.send<RawPayment, InvoiceRef>(PAYMENT_VOID, params, overrides),
+    );
   }
 
   /**
@@ -47,12 +49,19 @@ export class Payments {
 
   /** Capture an authorized invoice (`POST /api/integration/settle`). */
   async settle(params: AmountParams, overrides?: RequestOverrides): Promise<PaymentResult> {
-    return this.mapPayment(await this.send<RawPayment, AmountParams>(PAYMENT_SETTLE, params, overrides));
+    return this.mapPayment(
+      await this.send<RawPayment, AmountParams>(PAYMENT_SETTLE, params, overrides),
+    );
   }
 
   /** Reverse an authorization hold (`POST /api/integration/reverse-authorization`). */
-  async reverseAuthorization(params: InvoiceRef, overrides?: RequestOverrides): Promise<PaymentResult> {
-    return this.mapPayment(await this.send<RawPayment, InvoiceRef>(PAYMENT_REVERSE_AUTHORIZATION, params, overrides));
+  async reverseAuthorization(
+    params: InvoiceRef,
+    overrides?: RequestOverrides,
+  ): Promise<PaymentResult> {
+    return this.mapPayment(
+      await this.send<RawPayment, InvoiceRef>(PAYMENT_REVERSE_AUTHORIZATION, params, overrides),
+    );
   }
 
   /**
@@ -62,7 +71,9 @@ export class Payments {
    */
   async checkStatus(params: InvoiceRef, overrides?: RequestOverrides): Promise<PaymentResult> {
     return this.mapPayment(
-      await this.send<RawPayment, InvoiceRef>(PAYMENT_CHECK_STATUS, params, overrides, { replaySafe: true }),
+      await this.send<RawPayment, InvoiceRef>(PAYMENT_CHECK_STATUS, params, overrides, {
+        replaySafe: true,
+      }),
     );
   }
 
@@ -85,6 +96,10 @@ export class Payments {
   }
 
   private mapPayment(data: RawPayment): PaymentResult {
-    return { invoiceId: data.invoice_id, paidStatus: data.paid_status, authCode: data.auth_code ?? null };
+    return {
+      invoiceId: data.invoice_id,
+      paidStatus: data.paid_status,
+      authCode: data.auth_code ?? null,
+    };
   }
 }
