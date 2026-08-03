@@ -195,8 +195,8 @@ Numbers are accepted and stringified, but strings give you full control.
 ## API reference
 
 The full HTTP API — endpoints, fields, error codes, and test cards — is
-documented in the PayLink OpenAPI spec:
-<https://pay.getpayin.com/docs/payment_integration/swagger.json>
+documented in the PayLink API reference:
+<https://pay.getpayin.com/docs/payment_integration/index.html>
 
 ## License
 
