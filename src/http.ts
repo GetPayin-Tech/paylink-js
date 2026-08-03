@@ -10,8 +10,10 @@ import { VERSION } from './version';
  * - `query` — query parameters (used for the recurring status GET).
  * - `idempotencyKey` — sent as the `Idempotency-Key` header when provided.
  * - `signal` — optional caller abort signal, combined with the timeout.
- * - `replaySafe` — overrides the default replay-safety rule; set `true` for
- *   POSTs that are pure reads (check-status) so they can be retried.
+ * - `replaySafe` — overrides the default replay-safety rule (a plain POST is
+ *   never retried). Set `true` for POSTs that are safe to replay — pure reads
+ *   (check-status), or writes the server dedupes on an `Idempotency-Key`
+ *   (refund, recurring.create).
  */
 export interface RequestOptions {
   method: 'GET' | 'POST';
@@ -39,8 +41,9 @@ export const USER_AGENT = `paylink-js/${VERSION}${RUNTIME_SUFFIX}`;
  * Retries transient failures (429, 5xx, network errors, timeouts) with
  * exponential backoff and full jitter, honoring `Retry-After` when the server
  * sends it. A request is only ever replayed when doing so cannot double-charge:
- * GETs, requests carrying an `Idempotency-Key`, and calls explicitly flagged
- * `replaySafe`. A bare `vcc.charge` or `cards.charge` is NEVER retried.
+ * GETs, and calls the resource layer explicitly flags `replaySafe` (check-status,
+ * and refund / recurring.create when an `Idempotency-Key` is supplied). A bare
+ * `vcc.charge` or `cards.charge` is NEVER retried, even if the caller passes a key.
  */
 export async function execute<T>(config: ResolvedConfig, options: RequestOptions): Promise<T> {
   // An already-aborted signal never fires an `abort` event, so the listener
@@ -68,11 +71,15 @@ export async function execute<T>(config: ResolvedConfig, options: RequestOptions
 }
 
 /**
- * Whether replaying this request is safe. Reads are always safe; writes are
- * only safe when the server can dedupe them via an idempotency key.
+ * Whether replaying this request is safe. Reads (GETs) are always safe. A write
+ * is replayed only when the resource method explicitly flags it `replaySafe` —
+ * done solely for endpoints the server actually dedupes (check-status, and
+ * refund / recurring.create when an `Idempotency-Key` is supplied). A
+ * caller-supplied key alone does NOT make a write replay-safe: the charge
+ * endpoints ignore the header, so inferring safety from it could double-charge.
  */
 function isReplaySafe(options: RequestOptions): boolean {
-  return options.replaySafe ?? (options.method === 'GET' || options.idempotencyKey !== undefined);
+  return options.replaySafe ?? (options.method === 'GET');
 }
 
 /** Whether the failure is worth another attempt. */

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PaylinkClient } from '../src/client';
+import type { FetchLike } from '../src/config';
 import { PaylinkApiError } from '../src/errors';
 import { buildSignature } from '../src/signature';
 import { bodyOf, fakeFetch } from './helpers';
@@ -11,6 +12,43 @@ function client(data: unknown): { paylink: PaylinkClient; calls: ReturnType<type
   const paylink = new PaylinkClient({ publicToken: 'pub_token', hashToken: HASH, fetch });
 
   return { paylink, calls };
+}
+
+/**
+ * A client whose fetch fails with `status` for the first `failures` attempts and
+ * then returns `{ success: true, data }`. Failures carry `Retry-After: 0`, so any
+ * legitimate retry runs instantly — the assertions check the attempt count, not
+ * timing.
+ */
+function flakyClient(failures: number, status: number, data: unknown): {
+  paylink: PaylinkClient;
+  attempts: () => number;
+} {
+  let attempts = 0;
+
+  const fetch: FetchLike = async () => {
+    attempts += 1;
+
+    if (attempts <= failures) {
+      return {
+        status,
+        ok: false,
+        headers: { get: (name: string): string | null => (name === 'Retry-After' ? '0' : null) },
+        text: async () => JSON.stringify({ success: false, message: 'transient' }),
+      };
+    }
+
+    return {
+      status: 200,
+      ok: true,
+      headers: { get: (): string | null => null },
+      text: async () => JSON.stringify({ success: true, data }),
+    };
+  };
+
+  const paylink = new PaylinkClient({ publicToken: 'pub_token', hashToken: HASH, fetch });
+
+  return { paylink, attempts: () => attempts };
 }
 
 describe('invoices.create', () => {
@@ -176,5 +214,120 @@ describe('vcc.charge', () => {
 
     expect(calls[0]?.url).toBe('https://pay.getpayin.com/api/v2/integration/vcc/charge');
     expect(result).toEqual({ invoiceId: 9, invoiceNumber: 'INV-9', amount: 100, currency: 'USD', paidStatus: 'PAID' });
+  });
+});
+
+describe('replay-safety (retry wiring per endpoint)', () => {
+  const chargeParams = {
+    firstName: 'S',
+    lastName: 'S',
+    currencyId: 1,
+    price: 100,
+    product: 'p',
+    cardNumber: '4111111111111111',
+    cardExpiryMonth: '12',
+    cardExpiryYear: '2030',
+    country: 'EG',
+    address: 'a',
+    city: 'c',
+  };
+
+  const tokenChargeParams = {
+    cardToken: 'tok_1',
+    initiator: 'merchant' as const,
+    firstName: 'A',
+    lastName: 'B',
+    currency: 'USD',
+    price: 100,
+    product: 'p',
+    country: 'EG',
+    address: 'a',
+    city: 'c',
+  };
+
+  const recurringParams = {
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'j@x.com',
+    orderTitle: 'Plan',
+    orderAmount: 100,
+    currency: 'USD',
+    cadenceInterval: 'month' as const,
+    cadenceCount: 1,
+    consentText: 'I agree',
+  };
+
+  it('vcc.charge with an idempotencyKey is NEVER retried — one attempt only', async () => {
+    const { paylink, attempts } = flakyClient(1, 503, {});
+
+    await expect(paylink.vcc.charge(chargeParams, { idempotencyKey: 'abc' })).rejects.toBeInstanceOf(
+      PaylinkApiError,
+    );
+
+    expect(attempts()).toBe(1);
+  });
+
+  it('cards.charge with an idempotencyKey is NEVER retried — one attempt only', async () => {
+    const { paylink, attempts } = flakyClient(1, 503, {});
+
+    await expect(
+      paylink.cards.charge(tokenChargeParams, { idempotencyKey: 'abc' }),
+    ).rejects.toBeInstanceOf(PaylinkApiError);
+
+    expect(attempts()).toBe(1);
+  });
+
+  it('invoices.create with an idempotencyKey is NEVER retried — no duplicate invoice', async () => {
+    const { paylink, attempts } = flakyClient(1, 503, {});
+
+    await expect(
+      paylink.invoices.create(
+        { firstName: 'John', lastName: 'Doe', email: 'j@x.com', orderTitle: 'Plan', orderAmount: 100, currency: 'USD' },
+        { idempotencyKey: 'abc' },
+      ),
+    ).rejects.toBeInstanceOf(PaylinkApiError);
+
+    expect(attempts()).toBe(1);
+  });
+
+  it('refund WITH an idempotencyKey IS retried — the server dedupes on the key', async () => {
+    const { paylink, attempts } = flakyClient(1, 503, {
+      invoice_id: 7,
+      paid_status: 'refunded',
+      auth_code: 'A1',
+      refund_amount: 10.5,
+    });
+
+    const result = await paylink.payments.refund(
+      { invoiceId: 7, amount: '10.50' },
+      { idempotencyKey: 'idem-1' },
+    );
+
+    expect(attempts()).toBe(2);
+    expect(result.refundAmount).toBe(10.5);
+  });
+
+  it('refund WITHOUT an idempotencyKey is NOT retried — a keyless refund could double-refund', async () => {
+    const { paylink, attempts } = flakyClient(1, 503, {});
+
+    await expect(paylink.payments.refund({ invoiceId: 7, amount: '10.50' })).rejects.toBeInstanceOf(
+      PaylinkApiError,
+    );
+
+    expect(attempts()).toBe(1);
+  });
+
+  it('recurring.create WITH an idempotencyKey IS retried', async () => {
+    const { paylink, attempts } = flakyClient(1, 503, {
+      checkout_url: 'https://pay/checkout',
+      mandate_id: 'M1',
+      invoice_id: 42,
+      expires_at: '2026-08-03T11:00:00Z',
+    });
+
+    const result = await paylink.recurring.create(recurringParams, { idempotencyKey: 'idem-2' });
+
+    expect(attempts()).toBe(2);
+    expect(result.mandateId).toBe('M1');
   });
 });

@@ -34,8 +34,9 @@ export class Recurring {
 
   /**
    * Create a recurring mandate and return a checkout URL for the first
-   * (setup) charge (`POST /api/v2/integration/recurring/init`). Pass
-   * `idempotencyKey` (or `externalReference`) to make retries safe.
+   * (setup) charge (`POST /api/v2/integration/recurring/init`). The server
+   * dedupes the create on the `Idempotency-Key` header, so pass an
+   * `idempotencyKey` to make this call safe to auto-retry on transient failures.
    */
   async create(params: CreateRecurringParams, overrides?: RequestOverrides): Promise<CreateRecurringResult> {
     const body = buildSignedBody(
@@ -51,6 +52,7 @@ export class Recurring {
       body,
       idempotencyKey: overrides?.idempotencyKey,
       signal: overrides?.signal,
+      replaySafe: overrides?.idempotencyKey !== undefined,
     });
 
     return {

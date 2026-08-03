@@ -37,10 +37,13 @@ export class Payments {
 
   /**
    * Refund a paid invoice, full or partial (`POST /api/integration/refund`).
-   * Pass `idempotencyKey` to make retries safe.
+   * The server dedupes on the `Idempotency-Key` header, so a refund is retried
+   * on transient failures only when an `idempotencyKey` is supplied.
    */
   async refund(params: AmountParams, overrides?: RequestOverrides): Promise<RefundResult> {
-    const data = await this.send<RawRefund, AmountParams>(PAYMENT_REFUND, params, overrides);
+    const data = await this.send<RawRefund, AmountParams>(PAYMENT_REFUND, params, overrides, {
+      replaySafe: overrides?.idempotencyKey !== undefined,
+    });
 
     return { ...this.mapPayment(data), refundAmount: data.refund_amount ?? null };
   }

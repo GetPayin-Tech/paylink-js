@@ -49,7 +49,7 @@ describe('retry', () => {
     expect(calls()).toBe(3);
   });
 
-  it('retries a 503 on a POST that carries an Idempotency-Key', async () => {
+  it('retries a POST that is explicitly flagged replaySafe (refund with a key)', async () => {
     const { fetch, calls } = flaky(1, 503);
 
     await execute(fakeConfig({ fetch, ...noDelay }), {
@@ -57,9 +57,25 @@ describe('retry', () => {
       path: '/api/integration/refund',
       body: {},
       idempotencyKey: 'refund-1',
+      replaySafe: true,
     });
 
     expect(calls()).toBe(2);
+  });
+
+  it('does NOT retry a POST that merely carries an Idempotency-Key — the server may not dedupe it', async () => {
+    const { fetch, calls } = flaky(1, 503);
+
+    await expect(
+      execute(fakeConfig({ fetch, ...noDelay }), {
+        method: 'POST',
+        path: '/api/v2/integration/vcc/charge',
+        body: {},
+        idempotencyKey: 'charge-1',
+      }),
+    ).rejects.toBeInstanceOf(PaylinkApiError);
+
+    expect(calls()).toBe(1);
   });
 
   it('NEVER retries a bare POST — a charge must not be replayed', async () => {
