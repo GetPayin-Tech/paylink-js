@@ -1,5 +1,7 @@
 # @GetPayin-Tech/paylink-js
 
+[![CI](https://github.com/GetPayin-Tech/paylink-js/actions/workflows/ci.yml/badge.svg)](https://github.com/GetPayin-Tech/paylink-js/actions/workflows/ci.yml)
+
 Official **server-side** Node.js/TypeScript SDK for the PayLink payment
 integration API. It wraps every integration endpoint with an idiomatic, typed
 API and computes the order-sensitive HMAC-SHA256 signatures for you, so you
