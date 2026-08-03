@@ -55,15 +55,22 @@ export class Payments {
     return this.mapPayment(await this.send<RawPayment>(PAYMENT_REVERSE_AUTHORIZATION, params, overrides));
   }
 
-  /** Query the current gateway status of an invoice (`POST /api/integration/check-status`). */
+  /**
+   * Query the current gateway status of an invoice
+   * (`POST /api/integration/check-status`). This is a pure read despite being a
+   * POST, so it is retried on transient failures.
+   */
   async checkStatus(params: InvoiceRef, overrides?: RequestOverrides): Promise<PaymentResult> {
-    return this.mapPayment(await this.send<RawPayment>(PAYMENT_CHECK_STATUS, params, overrides));
+    return this.mapPayment(
+      await this.send<RawPayment>(PAYMENT_CHECK_STATUS, params, overrides, { replaySafe: true }),
+    );
   }
 
   private async send<T>(
     spec: EndpointSpec,
     params: InvoiceRef | AmountParams,
     overrides?: RequestOverrides,
+    transport?: { replaySafe?: boolean },
   ): Promise<T> {
     const body = buildSignedBody(
       spec,
@@ -78,6 +85,7 @@ export class Payments {
       body,
       idempotencyKey: overrides?.idempotencyKey,
       signal: overrides?.signal,
+      replaySafe: transport?.replaySafe,
     });
   }
 

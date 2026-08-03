@@ -37,7 +37,8 @@ const paylink = new PaylinkClient({
   publicToken: process.env.PAYLINK_PUBLIC_TOKEN!,
   hashToken: process.env.PAYLINK_HASH_TOKEN!, // secret — server-side only
   // baseUrl defaults to https://pay.getpayin.com
-  // timeoutMs defaults to 30000
+  // timeoutMs defaults to 30000 (per attempt)
+  // maxRetries defaults to 2 (set 0 to disable retries)
 });
 
 const checkout = await paylink.invoices.create({
@@ -172,7 +173,7 @@ Every failure is a subclass of `PaylinkError`:
 | Error | When |
 | --- | --- |
 | `PaylinkConfigError` | Invalid client configuration (missing tokens, no `fetch`). |
-| `PaylinkApiError` | The API returned an error. Carries `status`, `errors`, `raw`, `isIdempotencyConflict` (409), and `isForbidden` (403 — e.g. card tokenization or recurring payments not enabled for the account). |
+| `PaylinkApiError` | The API returned an error. Carries `status`, `errors`, `raw`, `retryAfterMs`, `isIdempotencyConflict` (409), `isRateLimited` (429), and `isForbidden` (403 — e.g. card tokenization or recurring payments not enabled for the account). |
 | `PaylinkSignatureError` | A webhook signature did not verify. |
 | `PaylinkConnectionError` | Network failure or timeout (no HTTP response). |
 
@@ -184,6 +185,51 @@ try {
 } catch (error) {
   if (error instanceof PaylinkApiError && error.isIdempotencyConflict) {
     // a refund with this idempotency key already exists
+  }
+}
+```
+
+## Retries and rate limiting
+
+Every integration endpoint is rate limited server-side, so 429s are an expected
+condition under burst traffic rather than an edge case. The SDK retries
+transient failures — **429, 5xx, network errors, and timeouts** — with
+exponential backoff and full jitter, honoring the server's `Retry-After` header
+when present.
+
+**A request is only ever replayed when replaying it cannot double-charge:**
+
+| Replayed | Not replayed |
+| --- | --- |
+| All `GET`s (`recurring.status`) | `vcc.charge`, `cards.charge`, `cards.tokenize` |
+| Any call you pass an `idempotencyKey` to | `invoices.create`, `recurring.create` without a key |
+| `payments.checkStatus` (a pure read) | `recurring.cancel` / `pause` / `resume` |
+
+So to make a refund safely retryable, pass an idempotency key — otherwise a
+failed refund surfaces immediately and is yours to handle:
+
+```ts
+await paylink.payments.refund(
+  { invoiceId, amount: '10.50' },
+  { idempotencyKey: 'refund-order-1234' }, // now retried on 429/5xx
+);
+```
+
+Tune or disable retries per client:
+
+```ts
+new PaylinkClient({ publicToken, hashToken, maxRetries: 0 }); // off
+```
+
+`timeoutMs` applies to **each attempt**, so worst-case wall time is roughly
+`(maxRetries + 1) × timeoutMs` plus backoff. For requests the SDK will not
+replay, `PaylinkApiError.retryAfterMs` exposes the server's backoff hint so you
+can schedule your own retry:
+
+```ts
+catch (error) {
+  if (error instanceof PaylinkApiError && error.isRateLimited) {
+    await enqueueAfter(error.retryAfterMs ?? 1000);
   }
 }
 ```

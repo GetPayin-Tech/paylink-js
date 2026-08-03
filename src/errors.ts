@@ -41,20 +41,43 @@ export class PaylinkApiError extends PaylinkError {
 
   readonly raw: unknown;
 
+  /**
+   * How long the server asked us to wait before retrying, in milliseconds,
+   * parsed from the `Retry-After` response header (present on 429s). The SDK
+   * already honors this for replay-safe requests; it is exposed so callers can
+   * schedule their own retry of a request the SDK will not replay on its own.
+   */
+  readonly retryAfterMs?: number;
+
   constructor(
     message: string,
-    params: { status: number; errors?: Record<string, unknown>; raw?: unknown },
+    params: {
+      status: number;
+      errors?: Record<string, unknown>;
+      raw?: unknown;
+      retryAfterMs?: number;
+    },
   ) {
     super(message);
     this.name = 'PaylinkApiError';
     this.status = params.status;
     this.errors = params.errors;
     this.raw = params.raw;
+    this.retryAfterMs = params.retryAfterMs;
   }
 
   /** True when the API rejected the request as a duplicate (idempotency conflict). */
   get isIdempotencyConflict(): boolean {
     return this.status === 409;
+  }
+
+  /**
+   * True when the request was rate limited (HTTP 429). Every v2 integration
+   * route is rate limited server-side, so this is an expected condition under
+   * burst traffic — check {@link retryAfterMs} for the server's backoff hint.
+   */
+  get isRateLimited(): boolean {
+    return this.status === 429;
   }
 
   /**
