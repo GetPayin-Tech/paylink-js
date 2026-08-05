@@ -12,7 +12,7 @@ body:
     id: sdk-version
     attributes:
       label: SDK version
-      description: The installed version of `@getpayin-tech/paylink-js`.
+      description: The installed version of `@getpayin/paylink`.
       placeholder: 0.1.0
     validations:
       required: true

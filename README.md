@@ -1,8 +1,8 @@
-# @getpayin-tech/paylink-js
+# @getpayin/paylink
 
 [![CI](https://github.com/GetPayin-Tech/paylink-js/actions/workflows/ci.yml/badge.svg)](https://github.com/GetPayin-Tech/paylink-js/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/@getpayin-tech/paylink-js.svg)](https://www.npmjs.com/package/@getpayin-tech/paylink-js)
-[![install size](https://packagephobia.com/badge?p=@getpayin-tech/paylink-js)](https://packagephobia.com/result?p=@getpayin-tech/paylink-js)
+[![npm](https://img.shields.io/npm/v/@getpayin/paylink.svg)](https://www.npmjs.com/package/@getpayin/paylink)
+[![install size](https://packagephobia.com/badge?p=@getpayin/paylink)](https://packagephobia.com/result?p=@getpayin/paylink)
 
 Official **server-side** Node.js/TypeScript SDK for the PayLink payment
 integration API. It wraps every integration endpoint with an idiomatic, typed
@@ -30,13 +30,13 @@ never have to build them by hand.
 ## Install
 
 ```bash
-npm install @getpayin-tech/paylink-js
+npm install @getpayin/paylink
 ```
 
 ## Quick start
 
 ```ts
-import { PaylinkClient } from '@getpayin-tech/paylink-js';
+import { PaylinkClient } from '@getpayin/paylink';
 
 const paylink = new PaylinkClient({
   publicToken: process.env.PAYLINK_PUBLIC_TOKEN!,
@@ -176,7 +176,7 @@ signature with your `hashToken` and compares in constant time.
 
 ```ts
 import express from 'express';
-import { PaylinkClient, PaylinkSignatureError } from '@getpayin-tech/paylink-js';
+import { PaylinkClient, PaylinkSignatureError } from '@getpayin/paylink';
 
 const paylink = new PaylinkClient({ publicToken, hashToken });
 const app = express();
@@ -210,7 +210,7 @@ Every failure is a subclass of `PaylinkError`:
 | `PaylinkConnectionError` | Network failure or timeout (no HTTP response).                                                                                                                                                                                          |
 
 ```ts
-import { PaylinkApiError } from '@getpayin-tech/paylink-js';
+import { PaylinkApiError } from '@getpayin/paylink';
 
 try {
   await paylink.payments.refund({ invoiceId, amount: '10.00' });
