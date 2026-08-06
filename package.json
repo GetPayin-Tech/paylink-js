@@ -1,6 +1,6 @@
 {
   "name": "@getpayin/paylink",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Official server-side Node.js/TypeScript SDK for the PayLink payment integration API (checkouts, payment operations, card tokens, recurring mandates, webhook verification).",
   "keywords": [
     "paylink",

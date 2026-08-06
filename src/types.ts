@@ -33,8 +33,10 @@ export interface BillingAddress {
 
 /**
  * Parameters for `invoices.create`. `redirectionUrl` and `webhookUrl` must be
- * HTTPS URLs on the integration's registered domain; `paymentMode` is an
- * optional passthrough that is sent to the API but excluded from the signature.
+ * HTTPS URLs on the integration's registered domain; `paymentMode` and `iframe`
+ * are optional passthroughs that are sent to the API but excluded from the
+ * signature. Set `iframe: true` to have the API return a checkout suitable for
+ * embedding.
  */
 export interface CreateInvoiceParams {
   firstName: string;
@@ -51,6 +53,7 @@ export interface CreateInvoiceParams {
   webhookUrl?: string;
   orderDetails?: string;
   paymentMode?: string;
+  iframe?: boolean | number;
 }
 
 export interface CreateInvoiceResult {

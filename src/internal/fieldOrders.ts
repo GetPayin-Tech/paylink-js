@@ -73,6 +73,7 @@ export const INVOICE_CREATE: EndpointSpec<CreateInvoiceParams> = {
     { sdk: 'webhookUrl', wire: 'webhook_url' },
     { sdk: 'orderDetails', wire: 'order_details' },
     { sdk: 'paymentMode', wire: 'payment_mode', signed: false },
+    { sdk: 'iframe', wire: 'iframe', signed: false },
   ],
 };
 
