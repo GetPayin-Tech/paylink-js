@@ -145,6 +145,29 @@ describe('buildSignedBody — body construction rules', () => {
     expect(withMode.signature).toBe(withoutMode.signature);
   });
 
+  it('sends iframe in the body but excludes it from the signature', () => {
+    const withIframe = create(INVOICE_CREATE, {
+      firstName: 'A',
+      lastName: 'B',
+      email: 'a@b.com',
+      orderTitle: 'T',
+      orderAmount: 1,
+      currency: 'USD',
+      iframe: true,
+    });
+    const withoutIframe = create(INVOICE_CREATE, {
+      firstName: 'A',
+      lastName: 'B',
+      email: 'a@b.com',
+      orderTitle: 'T',
+      orderAmount: 1,
+      currency: 'USD',
+    });
+
+    expect(withIframe.iframe).toBe('1');
+    expect(withIframe.signature).toBe(withoutIframe.signature);
+  });
+
   it('appends the US state block (us_state, postal_code) after city', () => {
     const body = create(VCC_CHARGE, {
       firstName: 'S',

@@ -61,6 +61,22 @@ const checkout = await paylink.invoices.create({
 console.log(checkout.checkoutUrl, checkout.invoiceId, checkout.expiresAt);
 ```
 
+Pass `iframe: true` to receive a `checkoutUrl` suitable for embedding — for
+example rendering the hosted checkout inside an `<iframe>` on your own page
+instead of a full-page redirect:
+
+```ts
+const embedded = await paylink.invoices.create({
+  firstName: 'John',
+  lastName: 'Doe',
+  email: 'john@example.com',
+  orderTitle: 'Gold Plan',
+  orderAmount: '250.00',
+  currency: 'USD',
+  iframe: true, // optional, unsigned passthrough (like paymentMode)
+});
+```
+
 Both credentials are issued in the PayLink dashboard under
 **Settings → Payment Integrations**. `publicToken` is sent on every request;
 `hashToken` is the secret used only to sign — it never leaves your server.

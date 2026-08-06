@@ -46,6 +46,7 @@ describe('field registry type-linking', () => {
       fields: [
         { sdk: 'orderTitle', wire: 'order_title' },
         { sdk: 'paymentMode', wire: 'payment_mode', signed: false },
+        { sdk: 'iframe', wire: 'iframe', signed: false },
       ],
     };
 
