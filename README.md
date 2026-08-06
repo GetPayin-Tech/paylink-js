@@ -80,8 +80,12 @@ const embedded = await paylink.invoices.create({
 Then embed the returned checkout URL on your page. The `<iframe>` needs `allow="payment *"` so Apple Pay and Google Pay work inside the frame, and your page must listen for the completion message — in iframe mode the checkout signals the parent via `postMessage` instead of redirecting:
 
 ```html
-<iframe src="CHECKOUT_URL" allow="payment *"
-        style="width:100%;min-height:640px;border:0" title="Secure checkout"></iframe>
+<iframe
+  src="CHECKOUT_URL"
+  allow="payment *"
+  style="width:100%;min-height:640px;border:0"
+  title="Secure checkout"
+></iframe>
 <script>
   addEventListener('message', function (e) {
     if (e.origin !== 'https://pay.getpayin.com') return; // your API base origin
